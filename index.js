@@ -11,7 +11,7 @@ app.use(express.static('public'))
 app.use(bodyParser.urlencoded({extended: false}))
 app.use(bodyParser.json())
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
 
