@@ -6,8 +6,8 @@ const mongoose = require('mongoose')
 require('dotenv').config()
 
 // constant config
-const USERNAME_FIELD_NOT_EXIST = 'Username property/field does not exist in the payload'
-const USERNAME_REQUIRED = 'Username must be filled in, min.length = 1'
+const FIELD_NOT_EXIST = 'property/field does not exist in the payload'
+const INPUT_REQUIRED = 'input must be filled in, min.length is (1)'
 const CONNECTED_TO_HOST = 'Connected!'
 const FAIL_TO_CONNECT = 'Error: Failed to connect to the given hostname'
 const FAIL_TO_SAVE_DOC = 'Failed to save document'
@@ -56,8 +56,8 @@ app.route('/api/users')
   })
   .post(async (req, res) => {
     const {username} = req.body
-    if(username === undefined) return res.json({error: USERNAME_FIELD_NOT_EXIST})
-    if(username === '' || username.length < 1) return res.json({error: USERNAME_REQUIRED})
+    if(username === undefined) return res.json({error: `username ${FIELD_NOT_EXIST}`})
+    if(username === '' || username.length < 1) return res.json({error: `username ${INPUT_REQUIRED}`})
 
     let user;
 
@@ -76,7 +76,19 @@ app.route('/api/users')
     }
   });
 
+app.post('/api/users/:_userId/exercises', (req, res) => {
+  console.log(req.body)
+  console.log(req.params._userId)
+  
+  const {description, duration, date} = req.body
+  if(description === undefined) return res.json({error: `description ${FIELD_NOT_EXIST}`})
+  if(description === '' || description.length < 1) return res.json({error: `description ${INPUT_REQUIRED}`})
 
+  if(duration === undefined) return res.json({error: `duration ${FIELD_NOT_EXIST}`})
+  if(duration === '' || duration.length < 1) return res.json({error: `duration ${INPUT_REQUIRED}`})
+
+  if(date === undefined) return res.json({error: `date ${FIELD_NOT_EXIST}`})
+})
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
