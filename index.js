@@ -3,7 +3,6 @@ const app = express()
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
-const { Schema } = mongoose
 require('dotenv').config()
 
 // constant config
@@ -26,7 +25,7 @@ mongoose.connect(URI, {dbName: process.env.DB_NAME})
     console.log(`reason: ${err.syscall} ${err.code}`)
   })
 
-// mongoose model instances
+// mongoose model object
 const {UserModel} = require('./models/User')
 const {ExerciseModel} = require('./models/Exercise')
 const {LogModel} = require('./models/Log')
