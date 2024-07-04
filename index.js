@@ -9,6 +9,7 @@ require('dotenv').config()
 const INVALID_USERNAME = 'Invalid username'
 const CONNECTED_TO_HOST = 'Connected!'
 const FAIL_TO_CONNECT = 'Error: Failed to connect to the given hostname'
+const FAIL_TO_SAVE_DOC = 'Failed to save document'
 
 // middleware config
 app.use(cors())
@@ -36,12 +37,26 @@ app.get('/', (_req, res) => {
 })
 
 app.route('/api/users')
-  .post((req, res) => {
+  .post(async (req, res) => {
     const {username} = req.body
     if(username === undefined || username === "")
       return res.json({error: INVALID_USERNAME})
 
-    console.log(username)
+    let user;
+
+    try {
+      user = await new UserModel({username}).save()
+    } catch(err) {
+      user = undefined
+      console.log(err)
+    }
+  
+    finally {
+      const resObj = (user) ?
+        {username: user.username, _id: user._id} :
+        {error: FAIL_TO_SAVE_DOC}
+      res.json(resObj)
+    }
   });
 
 
