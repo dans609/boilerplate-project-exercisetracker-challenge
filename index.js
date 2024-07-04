@@ -6,7 +6,8 @@ const mongoose = require('mongoose')
 require('dotenv').config()
 
 // constant config
-const INVALID_USERNAME = 'Invalid username'
+const USERNAME_FIELD_NOT_EXIST = 'Username property/field does not exist in the payload'
+const USERNAME_REQUIRED = 'Username must be filled in, min.length = 1'
 const CONNECTED_TO_HOST = 'Connected!'
 const FAIL_TO_CONNECT = 'Error: Failed to connect to the given hostname'
 const FAIL_TO_SAVE_DOC = 'Failed to save document'
@@ -55,8 +56,8 @@ app.route('/api/users')
   })
   .post(async (req, res) => {
     const {username} = req.body
-    if(username === undefined || username === "")
-      return res.json({error: INVALID_USERNAME})
+    if(username === undefined) return res.json({error: USERNAME_FIELD_NOT_EXIST})
+    if(username === '' || username.length < 1) return res.json({error: USERNAME_REQUIRED})
 
     let user;
 
