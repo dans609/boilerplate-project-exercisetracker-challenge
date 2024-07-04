@@ -1,16 +1,14 @@
 const mongoose = require('mongoose')
-const {exerciseSchema} = require('./Exercise.js')
 const {Schema} = mongoose
 
-const {username, _userId, description, duration, date} = exerciseSchema
 const logSchema = new Schema({
-    username,
+    username: {type: String, required: true},
     count: {type: Number, default: 0},
-    _userId,
+    _userId: Schema.Types.ObjectId,
     log: [{
-        description,
-        duration,
-        date,
+        description: {type: String, required: true},
+        duration: {type: Number, min: 1, required: true},
+        date: {type: Date, default: Date.now},
     }],
 })
 
