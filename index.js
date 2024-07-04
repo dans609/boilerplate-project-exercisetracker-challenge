@@ -10,6 +10,7 @@ const INVALID_USERNAME = 'Invalid username'
 const CONNECTED_TO_HOST = 'Connected!'
 const FAIL_TO_CONNECT = 'Error: Failed to connect to the given hostname'
 const FAIL_TO_SAVE_DOC = 'Failed to save document'
+const FAIL_TO_FETCH_ALL = 'Failed to fetch all documents'
 
 // middleware config
 app.use(cors())
@@ -37,6 +38,21 @@ app.get('/', (_req, res) => {
 })
 
 app.route('/api/users')
+  .get(async (_req, res) => {
+    let users;
+
+    try {
+      users = await UserModel.find({})
+    } catch(err) {
+      users = undefined
+      console.log(err)
+    }
+
+    finally {
+      const resObj = (users) ? users : {error: FAIL_TO_FETCH_ALL}
+      res.json(resObj)
+    }
+  })
   .post(async (req, res) => {
     const {username} = req.body
     if(username === undefined || username === "")
