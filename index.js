@@ -26,6 +26,11 @@ mongoose.connect(URI, {dbName: process.env.DB_NAME})
     console.log(`reason: ${err.syscall} ${err.code}`)
   })
 
+// mongoose model instances
+const {UserModel} = require('./models/User')
+const {ExerciseModel} = require('./models/Exercise')
+const {LogModel} = require('./models/Log')
+
 // routes
 app.get('/', (_req, res) => {
   res.sendFile(__dirname + '/views/index.html')
