@@ -12,6 +12,9 @@ const CONNECTED_TO_HOST = 'Connected!'
 const FAIL_TO_CONNECT = 'Error: Failed to connect to the given hostname'
 const FAIL_TO_SAVE_DOC = 'Failed to save document'
 const FAIL_TO_FETCH_ALL = 'Failed to fetch all documents'
+const USER_NOT_EXIST = 'User  does not exist'
+const unixValidation = /^\d{1,13}$/
+const blockAllWhitespace= /\s*/g
 
 // middleware config
 app.use(cors())
@@ -59,7 +62,7 @@ app.route('/api/users')
     if(username === undefined) return res.json({error: `username ${FIELD_NOT_EXIST}`})
     if(username === '' || username.length < 1) return res.json({error: `username ${INPUT_REQUIRED}`})
 
-    let user;
+    let user
 
     try {
       user = await new UserModel({username}).save()
@@ -74,21 +77,72 @@ app.route('/api/users')
         {error: FAIL_TO_SAVE_DOC}
       res.json(resObj)
     }
-  });
+  })
 
-app.post('/api/users/:_userId/exercises', (req, res) => {
-  console.log(req.body)
-  console.log(req.params._userId)
+app.post('/api/users/:_userId/exercises', async (req, res) => {
+  const userId = req.params._userId
   
-  const {description, duration, date} = req.body
-  if(description === undefined) return res.json({error: `description ${FIELD_NOT_EXIST}`})
-  if(description === '' || description.length < 1) return res.json({error: `description ${INPUT_REQUIRED}`})
+  const {description, duration, date: payloadDateOrUnix} = req.body
+  console.log(description)
+  if(description === undefined)
+    return res.json({error: `description ${FIELD_NOT_EXIST}`})
+  if(!description || description.length < 1)
+    return res.json({error: `description ${INPUT_REQUIRED}`})
+  if(duration === undefined)
+    return res.json({error: `duration ${FIELD_NOT_EXIST}`})
+  if(!duration || duration.length < 1)
+    return res.json({error: `duration ${INPUT_REQUIRED}`})
+  if(payloadDateOrUnix === undefined)
+    return res.json({error: `date ${FIELD_NOT_EXIST}`})
+  
+  let date = (payloadDateOrUnix) ?
+    new Date(payloadDateOrUnix) :
+    new Date()
+  if(!isValid(date)) {
+    if(unixValidation.test(payloadDateOrUnix.replace(blockAllWhitespace, ''))) {
+      date = new Date(+payloadDateOrUnix)
+      if(!isValid(date))
+        date = null
+    } else { date = null }
+  }
 
-  if(duration === undefined) return res.json({error: `duration ${FIELD_NOT_EXIST}`})
-  if(duration === '' || duration.length < 1) return res.json({error: `duration ${INPUT_REQUIRED}`})
+  let username
+  try {
+    const _user = await UserModel.findById({_id: userId})
+    username = _user.username
+  } catch(err) {
+    username = undefined
+    console.log(err.message)
+  }
+  if(!username)
+    return res.json({error: USER_NOT_EXIST})
 
-  if(date === undefined) return res.json({error: `date ${FIELD_NOT_EXIST}`})
+  let exercise
+  try {
+    exercise = await new ExerciseModel({
+      username,
+      description,
+      duration,
+      date: date,
+      _userId: userId
+    }).save()
+  } catch(e) {
+    exercise = undefined
+    console.log(err)
+  }
+
+  finally {
+    const {_userId: _id, username, date, duration, description} = exercise
+    const resObj = (exercise) ?
+      {_id, username, date: date.toDateString(), duration, description} :
+      {error: FAIL_TO_SAVE_DOC}
+    res.json(resObj)
+  }
 })
+
+function isValid(dateInstance) {
+  return !isNaN(dateInstance.getTime())
+}
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
