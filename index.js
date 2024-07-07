@@ -143,10 +143,11 @@ app.post('/api/users/:_userId/exercises', async (req, res) => {
 
 app.get('/api/users/:_userId/logs', async (req, res) => {
   const userId = req.params._userId
+  if(!userId) return res.json({error: 'required: userId'})
 
   let username
   try {
-    const _user = await UserModel.findById({_id: userId})
+    const _user = await UserModel.findById(userId)
     username = _user.username
   } catch(err) {
     username = undefined
@@ -155,71 +156,75 @@ app.get('/api/users/:_userId/logs', async (req, res) => {
   if(!username)
     return res.json({error: USER_NOT_EXIST})
 
+  // [allExercises] variable only stored all related exercises with the given userId that starts from
+  // date(0) to the current date
+  // @further_update this will be modified later to handle query params,
+  // when query params have been defined, just return the query result that meet with the criteria
+  // to the user, but do not save the result to the log collection
   let allExercises
   try {
-    allExercises = await ExerciseModel.find({_userId: userId})
+    allExercises = await ExerciseModel
+      .find({_userId: userId})
+      .select('-_id -username -_userId -__v')
   } catch(err) {
     console.log(err.message)
     return res.end(SOMETHING_WRONG)
   }
 
-  const _log = await LogModel.findOneAndUpdate(
-    {_userId: userId},
-    {count: allExercises.length, log: allExercises},
-    {new: true}
-  )
-  console.log(_log)
-  console.log((_log) ?
+  // save the log to db, but ensure there are no log exist in the db with the corresponding userId
+  // if the user's log is exist in the db, update the log instead
+  const logFound = await LogModel.findOne({_userId: userId})
+  console.log((logFound) ?
     'userId is valid, log is exist in db, update instead' :
     'userId is valid, log does not exist in db, create new log'
   )
 
-  if(_log) {
+  if(logFound) {
+    // edit the [count] and [log] fields with the latest values and save the changes to the db
+    logFound.count = allExercises.length
+    logFound.log = allExercises
+    logFound.save()
+
+    // send the response to the user
     return res.json({
-      _id: _log._userId,
-      username: _log.username,
-      count: _log.count,
-      log: _log.log.map((__exerciseLog) => {
-        const {description, duration, date} = __exerciseLog
-        return {
-          description,
-          duration,
-          date: date.toDateString()
-        }
-      })
+      _id: userId,
+      username,
+      count: allExercises.length,
+      log: allExercises.map(exercise => ({
+        description: exercise.description,
+        duration: exercise.duration,
+        date: exercise.date.toDateString()      
+      }))
     })
   }
   
-  let log
+  // if the log is not found (null), create the new one
   try {
-    log = await new LogModel({
+    await new LogModel({
       username,
       count: allExercises.length,
       _userId: userId,
-      log: allExercises.map((_exercise) => {
-        return {
-          description: _exercise.description,
-          duration: _exercise.duration,
-          date: _exercise.date
-        }
-      })
+      log: allExercises.map((exercise) => ({
+        description: exercise.description,
+        duration: exercise.duration,
+        date: exercise.date
+      }))
     }).save()
   } catch(err) {
-    log = undefined
     console.log(err.message)
   }
   
   finally {
-    const {username: logUsername, count: countExercise, _userId: _id, log: pLog} = log
-    const resObj = (log) ?
-      {_id, username: logUsername, count: countExercise, log: pLog.map((exerciseLog) => {
-        return {
-          description: exerciseLog.description,
-          duration: exerciseLog.duration,
-          date: exerciseLog.date.toDateString()
-        }  
-      })} : {error: FAIL_TO_SAVE_DOC}
-    res.json(resObj)
+    res.json({
+      _id: userId,
+      username,
+      count: allExercises.length,
+      log: allExercises.map(exercise => ({
+        description: exercise.description,
+        duration: exercise.duration,
+        date: exercise.date.toDateString()      
+      }))
+    })
   }
 })
 
