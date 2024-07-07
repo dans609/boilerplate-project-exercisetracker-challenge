@@ -12,7 +12,8 @@ const CONNECTED_TO_HOST = 'Connected!'
 const FAIL_TO_CONNECT = 'Error: Failed to connect to the given hostname'
 const FAIL_TO_SAVE_DOC = 'Failed to save document'
 const FAIL_TO_FETCH_ALL = 'Failed to fetch all documents'
-const USER_NOT_EXIST = 'User  does not exist'
+const USER_NOT_EXIST = 'User does not exist'
+const SOMETHING_WRONG = 'Something went wrong'
 const unixValidation = /^\d{1,13}$/
 const blockAllWhitespace= /\s*/g
 
@@ -136,6 +137,88 @@ app.post('/api/users/:_userId/exercises', async (req, res) => {
     const resObj = (exercise) ?
       {_id, username, date: date.toDateString(), duration, description} :
       {error: FAIL_TO_SAVE_DOC}
+    res.json(resObj)
+  }
+})
+
+app.get('/api/users/:_userId/logs', async (req, res) => {
+  const userId = req.params._userId
+
+  let username
+  try {
+    const _user = await UserModel.findById({_id: userId})
+    username = _user.username
+  } catch(err) {
+    username = undefined
+    console.log(err.message)
+  }
+  if(!username)
+    return res.json({error: USER_NOT_EXIST})
+
+  let allExercises
+  try {
+    allExercises = await ExerciseModel.find({_userId: userId})
+  } catch(err) {
+    console.log(err.message)
+    return res.end(SOMETHING_WRONG)
+  }
+
+  const _log = await LogModel.findOneAndUpdate(
+    {_userId: userId},
+    {count: allExercises.length, log: allExercises},
+    {new: true}
+  )
+  console.log(_log)
+  console.log((_log) ?
+    'userId is valid, log is exist in db, update instead' :
+    'userId is valid, log does not exist in db, create new log'
+  )
+
+  if(_log) {
+    return res.json({
+      _id: _log._userId,
+      username: _log.username,
+      count: _log.count,
+      log: _log.log.map((__exerciseLog) => {
+        const {description, duration, date} = __exerciseLog
+        return {
+          description,
+          duration,
+          date: date.toDateString()
+        }
+      })
+    })
+  }
+  
+  let log
+  try {
+    log = await new LogModel({
+      username,
+      count: allExercises.length,
+      _userId: userId,
+      log: allExercises.map((_exercise) => {
+        return {
+          description: _exercise.description,
+          duration: _exercise.duration,
+          date: _exercise.date
+        }
+      })
+    }).save()
+  } catch(err) {
+    log = undefined
+    console.log(err.message)
+  }
+  
+  finally {
+    const {username: logUsername, count: countExercise, _userId: _id, log: pLog} = log
+    const resObj = (log) ?
+      {_id, username: logUsername, count: countExercise, log: pLog.map((exerciseLog) => {
+        return {
+          description: exerciseLog.description,
+          duration: exerciseLog.duration,
+          date: exerciseLog.date.toDateString()
+        }  
+      })} : {error: FAIL_TO_SAVE_DOC}
     res.json(resObj)
   }
 })
