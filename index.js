@@ -134,6 +134,10 @@ app.get('/api/users/:_userId/logs', async (req, res) => {
   if(!userId)
     return res.json({error: 'required: userId'})
 
+  const from = req.query.from
+  const to = req.query.to
+  const limit = req.query.limit
+
   let username
   try {
     const _user = await UserModel.findById(userId)
@@ -145,11 +149,6 @@ app.get('/api/users/:_userId/logs', async (req, res) => {
   if(!username)
     return res.json({error: USER_NOT_EXIST})
 
-  // [allExercises] variable only stored all related exercises with the given userId that starts from
-  // date(0) to the current date
-  // @further_update this will be modified later to handle query params,
-  // when query params have been defined, just return the query result that meet with the criteria
-  // to the user, but do not save the result to the log collection
   let allExercises
   try {
     allExercises = await ExerciseModel
@@ -160,13 +159,13 @@ app.get('/api/users/:_userId/logs', async (req, res) => {
     return res.end(SOMETHING_WRONG)
   }
 
-  // save the log to db, but ensure there are no log exist in the db with the corresponding userId
-  // if the user's log is exist in the db, update the log instead
-  const logFound = await LogModel.findOne({_userId: userId})
-  console.log((logFound) ?
-    'userId is valid, log is exist in db, update instead' :
-    'userId is valid, log does not exist in db, create new log'
-  )
+  let logFound
+  try {
+    logFound = await LogModel.findOne({_userId: userId})
+  } catch(err) {
+    console.log(err)
+    logFound = null
+  }
 
   if(logFound) {
     // edit the [count] and [log] fields with the latest values and save the changes to the db
@@ -178,6 +177,8 @@ app.get('/api/users/:_userId/logs', async (req, res) => {
     return res.json({
       _id: userId,
       username,
+      from,
+      to,
       count: allExercises.length,
       log: allExercises.map(exercise => ({
         description: exercise.description,
@@ -207,6 +208,8 @@ app.get('/api/users/:_userId/logs', async (req, res) => {
     res.json({
       _id: userId,
       username,
+      from,
+      to,
       count: allExercises.length,
       log: allExercises.map(exercise => ({
         description: exercise.description,
