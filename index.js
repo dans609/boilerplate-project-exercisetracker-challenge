@@ -82,20 +82,8 @@ app.route('/api/users')
 
 app.post('/api/users/:_userId/exercises', async (req, res) => {
   const userId = req.params._userId
-  
   const {description, duration, date: payloadDateOrUnix} = req.body
-  console.log(description)
-  if(description === undefined)
-    return res.json({error: `description ${FIELD_NOT_EXIST}`})
-  if(!description || description.length < 1)
-    return res.json({error: `description ${INPUT_REQUIRED}`})
-  if(duration === undefined)
-    return res.json({error: `duration ${FIELD_NOT_EXIST}`})
-  if(!duration || duration.length < 1)
-    return res.json({error: `duration ${INPUT_REQUIRED}`})
-  if(payloadDateOrUnix === undefined)
-    return res.json({error: `date ${FIELD_NOT_EXIST}`})
-  
+
   let date = (payloadDateOrUnix) ?
     new Date(payloadDateOrUnix) :
     new Date()
@@ -143,7 +131,8 @@ app.post('/api/users/:_userId/exercises', async (req, res) => {
 
 app.get('/api/users/:_userId/logs', async (req, res) => {
   const userId = req.params._userId
-  if(!userId) return res.json({error: 'required: userId'})
+  if(!userId)
+    return res.json({error: 'required: userId'})
 
   let username
   try {
