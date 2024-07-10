@@ -136,7 +136,7 @@ app.get('/api/users/:_userId/logs', async (req, res) => {
 
   const from = req.query.from
   const to = req.query.to
-  const limit = req.query.limit
+  const limit = Number(req.query.limit) || 0
 
   let username
   try {
@@ -159,65 +159,57 @@ app.get('/api/users/:_userId/logs', async (req, res) => {
     return res.end(SOMETHING_WRONG)
   }
 
-  let logFound
   try {
-    logFound = await LogModel.findOne({_userId: userId})
+    const logFound = await LogModel.findOne({_userId: userId})
+    const size = allExercises.length
+    
+    if(logFound) {
+      if(logFound.count !== size) {
+        logFound.count = size
+        logFound.log = allExercises
+        logFound.save()
+      }
+    } else {
+      await new LogModel({username, count: size, _userId: userId,
+        log: allExercises.map((exercise) => ({
+          description: exercise.description,
+          duration: exercise.duration,
+          date: exercise.date
+        }))
+      }).save()
+    }
   } catch(err) {
     console.log(err)
-    logFound = null
   }
 
-  if(logFound) {
-    // edit the [count] and [log] fields with the latest values and save the changes to the db
-    logFound.count = allExercises.length
-    logFound.log = allExercises
-    logFound.save()
-
-    // send the response to the user
-    return res.json({
-      _id: userId,
-      username,
-      from,
-      to,
-      count: allExercises.length,
-      log: allExercises.map(exercise => ({
-        description: exercise.description,
-        duration: exercise.duration,
-        date: exercise.date.toDateString()      
-      }))
-    })
-  }
-  
-  // if the log is not found (null), create the new one
+  const startDate = new Date(from)
+  const endDate = new Date(to)
+  let filteredExercises
   try {
-    await new LogModel({
-      username,
-      count: allExercises.length,
-      _userId: userId,
-      log: allExercises.map((exercise) => ({
-        description: exercise.description,
-        duration: exercise.duration,
-        date: exercise.date
-      }))
-    }).save()
+    filteredExercises = await ExerciseModel
+      .find({_userId: userId, date: {
+        $gte: startDate.getTime() || new Date(0).getTime(),
+        $lte: endDate.getTime() || new Date(Date.now()).getTime()
+      }})
+      .select('-_id -username -_userId -__v')
+      .limit(limit)
   } catch(err) {
-    console.log(err.message)
+    console.log(err)
+    return res.end(SOMETHING_WRONG)
   }
-  
-  finally {
-    res.json({
-      _id: userId,
-      username,
-      from,
-      to,
-      count: allExercises.length,
-      log: allExercises.map(exercise => ({
-        description: exercise.description,
-        duration: exercise.duration,
-        date: exercise.date.toDateString()      
-      }))
-    })
-  }
+
+  return res.json({
+    _id: userId,
+    username,
+    from: (isValid(startDate)) ? startDate.toDateString() : undefined,
+    to: (isValid(endDate)) ? endDate.toDateString() : undefined,
+    count: filteredExercises.length,
+    log: filteredExercises.map(exercise => ({
+      description: exercise.description,
+      duration: exercise.duration,
+      date: exercise.date.toDateString()
+    }))
+  })
 })
 
 function isValid(dateInstance) {
